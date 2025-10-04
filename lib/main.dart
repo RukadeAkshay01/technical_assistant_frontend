@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/chat_screen.dart';
 import 'screens/stats_screen.dart';
+import 'screens/history_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -39,6 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   static const List<Widget> _screens = [
+    HistoryScreen(),
     ChatScreen(),
     StatsScreen(),
   ];
@@ -55,6 +57,11 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: 'History',
+          ),
           NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
             selectedIcon: Icon(Icons.chat_bubble),

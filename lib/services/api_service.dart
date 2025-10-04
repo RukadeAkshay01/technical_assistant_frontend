@@ -53,33 +53,96 @@ class ApiService {
 
   Future<StatsData> getStatsData() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl${AppConfig.statsEndpoint}'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      // First, get the conversation history
+      final messages = await getConversationHistory();
+      
+      // Initialize counters
+      int jobsCompleted = 0;
+      double totalEarnings = 0;
+      double totalExpenses = 0;
+      int activeJobs = 0;
+      Map<int, double> monthlyEarnings = {};
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return StatsData.fromJson(data);
-      } else {
-        throw Exception('Failed to load stats: ${response.statusCode}');
+      // Process each message to extract stats
+      for (final message in messages) {
+        if (!message.isUser && message.metadata != null) {
+          final meta = message.metadata!;
+          
+          // Extract job counts and amounts from metadata
+          if (meta.containsKey('structured')) {
+            final structured = meta['structured'] as Map<String, dynamic>?;
+            if (structured != null) {
+              // Count completed jobs
+              if (structured.containsKey('intent') && 
+                  structured['intent'] == 'job_completed') {
+                jobsCompleted++;
+              }
+              
+              // Add earnings
+              if (structured.containsKey('amount')) {
+                final amount = double.tryParse(structured['amount'].toString()) ?? 0.0;
+                if (structured['type'] == 'income') {
+                  totalEarnings += amount;
+                  
+                  // Add to monthly earnings
+                  final month = DateTime.now().month - 1; // 0-based month
+                  monthlyEarnings[month] = (monthlyEarnings[month] ?? 0) + amount;
+                } else if (structured['type'] == 'expense') {
+                  totalExpenses += amount;
+                }
+              }
+              
+              // Count active jobs
+              if (structured.containsKey('status') && 
+                  structured['status'] == 'active') {
+                activeJobs++;
+              }
+            }
+          }
+        }
       }
+
+      // Convert monthly earnings to list format
+      final monthlyEarningsList = monthlyEarnings.entries
+          .map((e) => MonthlyEarning(month: e.key, earning: e.value))
+          .toList()
+        ..sort((a, b) => a.month.compareTo(b.month));
+
+      // Create and return StatsData object
+      return StatsData(
+        jobsCompleted: jobsCompleted,
+        totalEarnings: totalEarnings,
+        totalExpenses: totalExpenses,
+        activeJobs: activeJobs,
+        monthlyEarnings: monthlyEarningsList,
+      );
     } catch (e) {
-      throw Exception('Error loading stats: $e');
+      throw Exception('Error calculating stats: $e');
     }
   }
 
   Future<List<Message>> getConversationHistory() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/v1/conversations/$userId/$conversationId'),
+        Uri.parse('$baseUrl/conversations/$userId/$conversationId'),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List<dynamic> messagesJson = data['messages'];
-        return messagesJson.map((json) => Message.fromJson(json)).toList();
+        final List<dynamic> messagesJson = data['messages'] ?? [];
+        return messagesJson.map((msg) {
+          // Convert Firestore message format to our Message model
+          final payload = msg['payload'] as Map<String, dynamic>;
+          return Message(
+            text: payload['text'] as String,
+            isUser: msg['direction'] == 'user',
+            timestamp: msg['created_at'] != null 
+                ? DateTime.parse(msg['created_at'] as String)
+                : DateTime.now(),
+            metadata: payload['meta'] as Map<String, dynamic>?,
+          );
+        }).toList();
       } else {
         throw Exception('Failed to load history: ${response.statusCode}');
       }
