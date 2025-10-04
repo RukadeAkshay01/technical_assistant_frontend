@@ -129,16 +129,21 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> messagesJson = data['messages'] ?? [];
-        return messagesJson.map((msg) {
+        final Map<String, dynamic> data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (!data.containsKey('messages')) {
+          print('Warning: Response does not contain messages key. Response: $data');
+          return [];
+        }
+        final List<dynamic> messagesJson = data['messages'] as List<dynamic>;
+        return messagesJson.map((dynamic msg) {
+          final Map<String, dynamic> msgMap = msg as Map<String, dynamic>;
           // Convert Firestore message format to our Message model
-          final payload = msg['payload'] as Map<String, dynamic>;
+          final Map<String, dynamic> payload = msgMap['payload'] as Map<String, dynamic>;
           return Message(
             text: payload['text'] as String,
-            isUser: msg['direction'] == 'user',
-            timestamp: msg['created_at'] != null 
-                ? DateTime.parse(msg['created_at'] as String)
+            isUser: msgMap['direction'] == 'user',
+            timestamp: msgMap['created_at'] != null 
+                ? DateTime.parse(msgMap['created_at'] as String)
                 : DateTime.now(),
             metadata: payload['meta'] as Map<String, dynamic>?,
           );
