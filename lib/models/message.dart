@@ -11,7 +11,7 @@ class Message {
     this.metadata,
   });
 
-  factory Message.fromJson(Map<String, dynamic> json) {
+  factory Message.fromBackend(Map<String, dynamic> json) {
     // Handle both direct API response and Firestore message format
     if (json.containsKey('payload')) {
       final payload = json['payload'] as Map<String, dynamic>;

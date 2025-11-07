@@ -18,7 +18,7 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   void initState() {
     super.initState();
-    _statsData = _apiService.getStatsData();
+    _statsData = _apiService.getStatsData(); // ✅ Stats load safely
   }
 
   @override
@@ -35,62 +35,73 @@ class _StatsScreenState extends State<StatsScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.hasData) {
-            final stats = snapshot.data!;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatCards(context, stats),
-                  const SizedBox(height: 24),
-                  _buildChart(context, stats.monthlyEarnings),
-                ],
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
               ),
             );
-          } else {
+          }
+
+          if (!snapshot.hasData) {
             return const Center(child: Text('No data available'));
           }
+
+          final stats = snapshot.data!;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatCards(context, stats),
+                const SizedBox(height: 24),
+                _buildChart(context, stats.monthlyEarnings),
+              ],
+            ),
+          );
         },
       ),
     );
   }
 
+  // ------------------ STAT CARDS ------------------
   Widget _buildStatCards(BuildContext context, StatsData stats) {
     return GridView.count(
-      crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
+      crossAxisCount: 2,
       crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
       children: [
         _buildStatCard(
           context,
-          'Jobs Completed',
-          '${stats.jobsCompleted}',
+          "Jobs Completed",
+          "${stats.jobsCompleted}",
           FontAwesomeIcons.briefcase,
           Colors.blue,
         ),
         _buildStatCard(
           context,
-          'Total Earnings',
-          '\$${stats.totalEarnings.toStringAsFixed(2)}',
-          FontAwesomeIcons.dollarSign,
+          "Total Earnings",
+          "₹${stats.totalEarnings.toStringAsFixed(2)}", // ✅ replaced $
+          FontAwesomeIcons.indianRupeeSign,
           Colors.green,
         ),
         _buildStatCard(
           context,
-          'Total Expenses',
-          '\$${stats.totalExpenses.toStringAsFixed(2)}',
+          "Total Expenses",
+          "₹${stats.totalExpenses.toStringAsFixed(2)}",
           FontAwesomeIcons.receipt,
           Colors.orange,
         ),
         _buildStatCard(
           context,
-          'Active Jobs',
-          '${stats.activeJobs}',
+          "Active Jobs",
+          "${stats.activeJobs}",
           FontAwesomeIcons.clock,
           Colors.purple,
         ),
@@ -98,8 +109,13 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String title, String value,
-      IconData icon, Color color) {
+  Widget _buildStatCard(
+      BuildContext context,
+      String title,
+      String value,
+      IconData icon,
+      Color color,
+      ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -113,39 +129,35 @@ class _StatsScreenState extends State<StatsScreen> {
             Text(
               value,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
+            Text(title, textAlign: TextAlign.center),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChart(
-      BuildContext context, List<MonthlyEarning> monthlyEarnings) {
+  // ------------------ CHART ------------------
+  Widget _buildChart(BuildContext context, List<MonthlyEarning> monthlyEarnings) {
     return SizedBox(
       height: 300,
       child: Card(
-        elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 4,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Monthly Earnings',
+                "Monthly Earnings",
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Expanded(
                 child: LineChart(
                   LineChartData(
@@ -154,20 +166,18 @@ class _StatsScreenState extends State<StatsScreen> {
                     borderData: FlBorderData(show: true),
                     lineBarsData: [
                       LineChartBarData(
-                        spots: monthlyEarnings
-                            .map((e) => FlSpot(
-                                e.month.toDouble(), e.earning.toDouble()))
-                            .toList(),
                         isCurved: true,
-                        color: Theme.of(context).colorScheme.primary,
+                        spots: monthlyEarnings
+                            .map((e) =>
+                            FlSpot(e.month.toDouble(), e.earning.toDouble()))
+                            .toList(),
                         barWidth: 3,
                         dotData: FlDotData(show: false),
+                        color: Theme.of(context).colorScheme.primary,
                         belowBarData: BarAreaData(
                           show: true,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.2),
+                          color:
+                          Theme.of(context).colorScheme.primary.withOpacity(0.2),
                         ),
                       ),
                     ],

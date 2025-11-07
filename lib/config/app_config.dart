@@ -1,12 +1,13 @@
 class AppConfig {
   // API Configuration
-  static const String baseUrl = 'http://192.168.7.251:8000/v1';  // Android Emulator localhost
-  // static const String baseUrl = 'http://localhost:8000/v1';  // For web/desktop testing
+  static const String baseUrl = 'https://technical-backend-598525817487.asia-south1.run.app';  // Production backend URL
 
   // API Endpoints
-  static const String messagesEndpoint = '/messages';
-  static const String ttsEndpoint = '/tts';
-  static const String statsEndpoint = '/stats';
+  static const String messagesEndpoint = '/v1/messages';
+  static const String ttsEndpoint = '/v1/tts';
+  static const String statsEndpoint = '/v1/stats';
+  static const String historyEndpoint = '/v1/conversations';
+
 
   // User Configuration
   static const String userId = 'demo_user';

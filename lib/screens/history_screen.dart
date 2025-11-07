@@ -13,11 +13,15 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   late Future<List<Message>> _history;
   final ApiService _apiService = ApiService();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _history = _apiService.getConversationHistory();
+    _history = _apiService.getConversationHistory().then((messages) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      return messages;
+    });
   }
 
   @override
@@ -42,6 +46,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
           final messages = snapshot.data!;
           return ListView.builder(
+            controller: _scrollController,
             padding: const EdgeInsets.all(16),
             itemCount: messages.length,
             itemBuilder: (context, index) {
@@ -74,9 +79,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
               ).animate().fadeIn().slideX(
-                    begin: message.isUser ? 0.3 : -0.3,
-                    duration: const Duration(milliseconds: 200),
-                  );
+                begin: message.isUser ? 0.3 : -0.3,
+                duration: const Duration(milliseconds: 200),
+              );
             },
           );
         },
@@ -84,9 +89,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
+  }
+
   String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 }
