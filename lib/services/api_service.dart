@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import '../models/message.dart';
 import '../config/app_config.dart';
 import '../models/stats_data.dart';
+import 'dart:typed_data';
+
 
 class ApiService {
   final String baseUrl = AppConfig.baseUrl;
@@ -90,6 +92,20 @@ class ApiService {
       throw Exception("Error loading history: $e");
     }
   }
+
+  Future<String> transcribeSTT(Uint8List audioBytes) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/v1/stt"),
+      headers: {"Content-Type": "application/octet-stream"},
+      body: audioBytes,
+    );
+
+    final data = jsonDecode(response.body);
+    return data["transcript"] ?? "";
+  }
+
+
+
 
 
   // ---------------- STATS (based on history) ----------------

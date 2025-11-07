@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 class ChatInput extends StatefulWidget {
-  final Function(String) onSendMessage;
+  final Function(String text) onSendMessage;
   final bool enabled;
 
   const ChatInput({
     super.key,
     required this.onSendMessage,
-    this.enabled = true,
+    required this.enabled,
   });
 
   @override
@@ -15,77 +17,88 @@ class ChatInput extends StatefulWidget {
 }
 
 class _ChatInputState extends State<ChatInput> {
+  final SpeechToText _speech = SpeechToText();
   final TextEditingController _controller = TextEditingController();
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  bool _isListening = false;
+
+  Future<void> _toggleMic() async {
+    if (!_isListening) {
+      if (!await Permission.microphone.request().isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Microphone permission denied")),
+        );
+        return;
+      }
+
+      final available = await _speech.initialize(
+        onStatus: (status) => print("status: $status"),
+        onError: (e) => print("error: $e"),
+      );
+
+      if (!available) return;
+
+      setState(() => _isListening = true);
+
+      _speech.listen(
+        localeId: "en-IN",       // Hinglish style
+        onResult: (result) {
+          _controller.text = result.recognizedWords;
+        },
+      );
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+
+      if (_controller.text.isNotEmpty) {
+        widget.onSendMessage(_controller.text);
+        _controller.clear();
+      }
+    }
   }
 
-  void _handleSubmit() {
-    final text = _controller.text;
-    if (text.trim().isNotEmpty && widget.enabled) {
-      widget.onSendMessage(text);
-      _controller.clear();
-    }
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    widget.onSendMessage(text);
+    _controller.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 8,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              enabled: widget.enabled,
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                enabled: widget.enabled,
+                decoration: InputDecoration(
+                  hintText: _isListening ? "Listening..." : "Type a message...",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceVariant,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
+                onSubmitted: (_) => _sendMessage(),
               ),
-              textCapitalization: TextCapitalization.sentences,
-              keyboardType: TextInputType.multiline,
-              maxLines: null,
-              onSubmitted: widget.enabled ? (_) => _handleSubmit() : null,
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: widget.enabled ? _handleSubmit : null,
-            icon: Icon(
-              Icons.send_rounded,
-              color: widget.enabled
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+            const SizedBox(width: 6),
+            IconButton(
+              icon: Icon(
+                _isListening ? Icons.stop : Icons.mic,
+                color: _isListening ? Colors.red : Colors.grey,
+              ),
+              onPressed: widget.enabled ? _toggleMic : null,
             ),
-          ),
-        ],
+            IconButton(
+              icon: const Icon(Icons.send),
+              onPressed: widget.enabled ? _sendMessage : null,
+            ),
+          ],
+        ),
       ),
     );
   }

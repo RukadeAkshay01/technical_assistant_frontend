@@ -56,6 +56,9 @@ dependencies:
   # Audio playback for TTS
   just_audio: ^0.9.36
 
+  speech_to_text: ^7.3.0
+  permission_handler: ^11.0.1
+
 
 
 
